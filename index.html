@@ -574,17 +574,26 @@ function updateProgress(dayKey) {
   const data = dayData[dayKey];
   if (!data) return;
 
-  // 恢复勾选
-  data.tasks.forEach((item, idx) => {
-    const sec = item.s;
-    const taskId = `task-${dayKey}-${sec}-${idx}`;
-    const li = document.getElementById(taskId);
-    if (!li) return;
-    const check = li.querySelector(".check-toggle");
-    if (dayStates[taskId]) {
-      check.classList.add("checked");
-      li.classList.add("completed");
-    }
+  // 恢复勾选 — 按科目分组，和生成HTML时保持一致
+  const sections = ["chinese","math","english","daily","note"];
+  sections.forEach(sec => {
+    let secIdx = 0;
+    data.tasks.forEach(item => {
+      if (item.s !== sec) return;
+      const taskId = `task-${dayKey}-${sec}-${secIdx}`;
+      const li = document.getElementById(taskId);
+      if (li) {
+        const check = li.querySelector(".check-toggle");
+        if (dayStates[taskId]) {
+          check.classList.add("checked");
+          li.classList.add("completed");
+        } else {
+          check.classList.remove("checked");
+          li.classList.remove("completed");
+        }
+      }
+      secIdx++;
+    });
   });
 
   // 进度
