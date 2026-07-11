@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 暑期作业日历 — 二(6)班</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh; padding: 20px;
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 { color: #fff; text-align: center; font-size: 1.8em; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .subtitle { text-align: center; color: rgba(255,255,255,0.85); font-size: 0.95em; margin-bottom: 25px; }
+
+  /* 日历 */
+  .calendar-wrapper {
+    background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  }
+  .month-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 15px; flex-wrap: wrap; gap: 10px;
+  }
+  .month-title { font-size: 1.3em; color: #333; font-weight: 700; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8em; }
+  .legend-item { display: flex; align-items: center; gap: 4px; color: #666; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 8px; }
+  .weekday { text-align: center; font-size: 0.85em; color: #999; font-weight: 600; padding: 5px; }
+
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day-cell {
+    aspect-ratio: 1; border-radius: 10px; padding: 6px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: all 0.2s; position: relative; min-height: 60px;
+    background: #f8f9fa; border: 2px solid transparent;
+  }
+  .day-cell:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .day-cell.empty { background: transparent; cursor: default; }
+  .day-cell.empty:hover { transform: none; box-shadow: none; }
+  .day-cell.today { border-color: #667eea; border-width: 3px; }
+  .day-cell.selected { background: #667eea; }
+  .day-cell.selected .day-num { color: #fff; }
+  .day-cell.selected .day-type { color: rgba(255,255,255,0.8); }
+
+  .day-num { font-size: 1.2em; font-weight: 700; color: #333; }
+  .day-type { font-size: 0.6em; color: #999; margin-top: 2px; }
+
+  /* 日期类型颜色 */
+  .type-normal { background: #e8f5e9; }
+  .type-normal .day-type { color: #4caf50; }
+  .type-review { background: #fff3e0; }
+  .type-review .day-type { color: #ff9800; }
+  .type-saturday { background: #e3f2fd; }
+  .type-saturday .day-type { color: #2196f3; }
+  .type-sunday { background: #fce4ec; }
+  .type-sunday .day-type { color: #e91e63; }
+  .type-free { background: #f3e5f5; }
+  .type-free .day-type { color: #9c27b0; }
+
+  /* 任务详情 */
+  .detail-panel {
+    background: #fff; border-radius: 16px; padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    display: none;
+  }
+  .detail-panel.active { display: block; animation: slideUp 0.3s; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .detail-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;
+  }
+  .detail-date {
+    font-size: 1.5em; font-weight: 700; color: #333;
+  }
+  .detail-badge {
+    padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: 600;
+  }
+  .badge-normal { background: #e8f5e9; color: #4caf50; }
+  .badge-review { background: #fff3e0; color: #ff9800; }
+  .badge-saturday { background: #e3f2fd; color: #2196f3; }
+  .badge-sunday { background: #fce4ec; color: #e91e63; }
+  .badge-free { background: #f3e5f5; color: #9c27b0; }
+
+  .task-section { margin-bottom: 15px; }
+  .task-section-title {
+    font-size: 1.05em; font-weight: 700; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .task-list { list-style: none; }
+  .task-list li {
+    padding: 8px 12px; margin-bottom: 5px; border-radius: 8px;
+    font-size: 0.95em; display: flex; align-items: flex-start; gap: 8px;
+    background: #f8f9fa; border-left: 3px solid #ddd;
+  }
+  .task-list li.subject-chinese { border-left-color: #ff6584; background: #fff5f7; }
+  .task-list li.subject-math { border-left-color: #4caf50; background: #f1f8e9; }
+  .task-list li.subject-english { border-left-color: #2196f3; background: #e3f2fd; }
+  .task-list li.subject-daily { border-left-color: #9c27b0; background: #f3e5f5; }
+  .task-list li.subject-note { border-left-color: #ff9800; background: #fff8e1; }
+
+  .task-icon { font-size: 1.1em; flex-shrink: 0; }
+  .task-text { flex: 1; line-height: 1.5; }
+
+  .no-task {
+    text-align: center; color: #999; padding: 30px; font-size: 1.1em;
+  }
+
+  .check-toggle {
+    width: 22px; height: 22px; border: 2px solid #ccc; border-radius: 5px;
+    cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; font-size: 0.8em; color: transparent;
+  }
+  .check-toggle.checked { background: #4caf50; border-color: #4caf50; color: #fff; }
+  .task-list li.completed { opacity: 0.5; text-decoration: line-through; }
+
+  .progress-bar {
+    background: #f0f0f0; border-radius: 10px; height: 8px; margin-top: 10px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 10px; transition: width 0.3s;
+  }
+
+  @media (max-width: 600px) {
+    .day-cell { min-height: 50px; }
+    .day-num { font-size: 1em; }
+    .day-type { font-size: 0.55em; }
+    h1 { font-size: 1.4em; }
+    .legend { font-size: 0.7em; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📚 暑期作业日历</h1>
+  <p class="subtitle">二(6)班 · 7月11日–8月14日 · 点击任意日期查看当日任务</p>
+
+  <div id="calendars"></div>
+
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <span class="detail-date" id="detailDate"></span>
+      <span class="detail-badge" id="detailBadge"></span>
+    </div>
+    <div id="detailContent"></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<script>
+// ========== 每日任务数据 ==========
+const dayData = {
+  // 第1周
+  "7/11": { type:"sat", label:"周六·减量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第1-2页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ①"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"📸", text:"外出可留意APEC元素，拍照留存"},
+  ]},
+  "7/12": { type:"sun", label:"周日·轻量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第3页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/13": { type:"normal", label:"周一", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第4-5页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ①"},
+    {s:"math", icon:"🔢", text:"每日一练 ①"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🔴", text:"随堂练习评讲已结束，有需要重考的可自行打印"},
+  ]},
+  "7/14": { type:"normal", label:"周二", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第6-7页"},
+    {s:"math", icon:"🔢", text:"每日一练 ②"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ②"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/15": { type:"review", label:"周三·机动/复盘", tasks:[
+    {s:"chinese", icon:"📝", text:"✅ 读书笔记 ①（一周一篇）"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🔄", text:"机动/复盘日：回顾本周完成情况，有积欠则补"},
+  ]},
+  "7/16": { type:"normal", label:"周四", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第8-9页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ②"},
+    {s:"math", icon:"🔢", text:"每日一练 ③"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/17": { type:"normal", label:"周五", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第10-11页"},
+    {s:"math", icon:"🔢", text:"每日一练 ④"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ③"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+
+  // 第2周
+  "7/18": { type:"sat", label:"周六·减量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第12-13页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ④"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/19": { type:"sun", label:"周日·轻量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第14页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/20": { type:"normal", label:"周一", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第15-16页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ③"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑤"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🎨", text:"本周重点：APEC英语小海报 — 整理实用英语打招呼表达，画海报"},
+  ]},
+  "7/21": { type:"normal", label:"周二", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第17-18页"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑥"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🎨", text:"继续完善 APEC 海报"},
+  ]},
+  "7/22": { type:"review", label:"周三·机动/复盘", tasks:[
+    {s:"chinese", icon:"📝", text:"✅ 读书笔记 ②（一周一篇）"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑤"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"✅", text:"APEC海报完成！回顾本周进度"},
+  ]},
+  "7/23": { type:"normal", label:"周四", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第19-20页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ④"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑦"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"📸", text:"继续收集APEC元素照片"},
+  ]},
+  "7/24": { type:"normal", label:"周五", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第21-22页"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑧"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑥"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+
+  // 第3周
+  "7/25": { type:"sat", label:"周六·减量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第23-24页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑦"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/26": { type:"sun", label:"周日·轻量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第25页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/27": { type:"normal", label:"周一", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第26-27页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑤"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑨"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"📸", text:"本周重点：整理APEC拍照记录 — 选出3-5张照片，每张配1-2句英语"},
+  ]},
+  "7/28": { type:"normal", label:"周二", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第28-29页"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑩"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"📸", text:"继续整理APEC拍照记录"},
+  ]},
+  "7/29": { type:"review", label:"周三·机动/复盘", tasks:[
+    {s:"chinese", icon:"📝", text:"✅ 读书笔记 ③（一周一篇）"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑧"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"✅", text:"APEC拍照记录完成！回顾本周进度"},
+  ]},
+  "7/30": { type:"normal", label:"周四", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第30-31页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑥"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑪"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "7/31": { type:"normal", label:"周五", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第32-33页"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑫"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑨"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+
+  // 第4周
+  "8/1": { type:"sat", label:"周六·减量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第34-35页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑩"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "8/2": { type:"sun", label:"周日·轻量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第36页"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "8/3": { type:"normal", label:"周一", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第37-38页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑦"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑬"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🎨", text:"本周重点：古诗配画 / 手抄报 — 选定古诗或主题"我的暑期生活""},
+  ]},
+  "8/4": { type:"normal", label:"周二", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第39-40页"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑭"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🎨", text:"继续制作手抄报/配画"},
+  ]},
+  "8/5": { type:"review", label:"周三·机动/复盘", tasks:[
+    {s:"chinese", icon:"📝", text:"✅ 读书笔记 ④（一周一篇）"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑪"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"✅", text:"古诗配画/手抄报完成！回顾本周进度"},
+  ]},
+  "8/6": { type:"normal", label:"周四", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第41-42页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑧"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑮"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "8/7": { type:"normal", label:"周五", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第43-44页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑨"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑯"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"english", icon:"📖", text:"绘本阅读 ⑫"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+
+  // 第5周
+  "8/8": { type:"sat", label:"周六·减量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第45-46页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑩"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "8/9": { type:"sun", label:"周日·轻量", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第47-48页"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑪"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+
+  // 第6周
+  "8/10": { type:"normal", label:"周一", tasks:[
+    {s:"chinese", icon:"✏️", text:"练字帖 第49-50页 🎉 全部完成！"},
+    {s:"chinese", icon:"📜", text:"背古诗 ⑫"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑰"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "8/11": { type:"normal", label:"周二", tasks:[
+    {s:"chinese", icon:"📜", text:"总复习古诗 ①-⑫"},
+    {s:"math", icon:"🔢", text:"每日一练 ⑱"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+  ]},
+  "8/12": { type:"review", label:"周三·机动/复盘", tasks:[
+    {s:"chinese", icon:"📋", text:"📋 全面检查：逐项核对所有作业完成情况"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🔄", text:"机动/复盘日：补缺 + 全面检查所有作业"},
+  ]},
+  "8/13": { type:"normal", label:"周四·预习", tasks:[
+    {s:"chinese", icon:"📖", text:"预习三年级语文 ①"},
+    {s:"math", icon:"📐", text:"预习三年级数学 ①"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🚀", text:"开始轻量预习三年级知识"},
+  ]},
+  "8/14": { type:"normal", label:"周五·预习", tasks:[
+    {s:"chinese", icon:"📖", text:"预习三年级语文 ②"},
+    {s:"math", icon:"📐", text:"预习三年级数学 ②"},
+    {s:"english", icon:"🇬🇧", text:"一起作业线上打卡"},
+    {s:"daily", icon:"📚", text:"阅读智能打卡 20分钟"},
+    {s:"daily", icon:"🤸", text:"跳绳打卡"},
+    {s:"note", icon:"🎉", text:"全部暑期作业完成！剩余假期自由安排"},
+  ]},
+};
+
+// ========== 日历渲染 ==========
+const months = [
+  { year: 2025, month: 7, name: "7月" },
+  { year: 2025, month: 8, name: "8月" },
+];
+const weekdayNames = ["日","一","二","三","四","五","六"];
+const typeClassMap = { normal:"type-normal", review:"type-review", sat:"type-saturday", sun:"type-sunday", free:"type-free" };
+const typeBadgeMap = { normal:"badge-normal", review:"badge-review", sat:"badge-saturday", sun:"badge-sunday", free:"badge-free" };
+const typeShortMap = { normal:"正常", review:"复盘", sat:"周六", sun:"周日", free:"自由" };
+
+// 获取今天的日期
+const today = new Date();
+const todayMonth = today.getMonth() + 1;
+const todayDate = today.getDate();
+const todayKey = todayMonth + "/" + todayDate;
+
+function buildCalendar() {
+  const container = document.getElementById("calendars");
+  let html = "";
+
+  // 图例
+  html += `<div class="calendar-wrapper"><div class="legend">`;
+  html += `<div class="legend-item"><div class="legend-dot" style="background:#e8f5e9;border:1px solid #4caf50"></div>正常日</div>`;
+  html += `<div class="legend-item"><div class="legend-dot" style="background:#fff3e0;border:1px solid #ff9800"></div>机动/复盘</div>`;
+  html += `<div class="legend-item"><div class="legend-dot" style="background:#e3f2fd;border:1px solid #2196f3"></div>周六减量</div>`;
+  html += `<div class="legend-item"><div class="legend-dot" style="background:#fce4ec;border:1px solid #e91e63"></div>周日轻量</div>`;
+  html += `</div></div>`;
+
+  months.forEach(m => {
+    html += `<div class="calendar-wrapper">`;
+    html += `<div class="month-header"><div class="month-title">📅 ${m.year}年${m.name}</div></div>`;
+
+    // 星期表头
+    html += `<div class="weekdays">`;
+    weekdayNames.forEach(w => html += `<div class="weekday">${w}</div>`);
+    html += `</div><div class="days">`;
+
+    // 计算第一天是星期几（0=周日）
+    const firstDay = new Date(m.year, m.month - 1, 1).getDay();
+    const daysInMonth = new Date(m.year, m.month, 0).getDate();
+
+    // 空格填充
+    for (let i = 0; i < firstDay; i++) html += `<div class="day-cell empty"></div>`;
+
+    // 日期格子
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = m.month + "/" + d;
+      const data = dayData[key];
+      const isToday = (m.month === todayMonth && d === todayDate);
+      if (data) {
+        html += `<div class="day-cell ${typeClassMap[data.type]} ${isToday ? 'today' : ''}" onclick="showDetail('${key}')" style="cursor:pointer">`;
+        html += `<div class="day-num">${d}</div>`;
+        html += `<div class="day-type">${typeShortMap[data.type]}</div>`;
+        html += `</div>`;
+      } else {
+        html += `<div class="day-cell ${isToday ? 'today' : ''}"><div class="day-num" style="color:#ccc">${d}</div></div>`;
+      }
+    }
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ========== 任务详情 ==========
+function showDetail(key) {
+  const data = dayData[key];
+  const panel = document.getElementById("detailPanel");
+  const dateEl = document.getElementById("detailDate");
+  const badgeEl = document.getElementById("detailBadge");
+  const contentEl = document.getElementById("detailContent");
+
+  if (!data) return;
+
+  dateEl.textContent = `📅 ${key}`;
+  badgeEl.textContent = data.label;
+  badgeEl.className = "detail-badge " + typeBadgeMap[data.type];
+
+  // 按科目分组
+  const sections = [
+    { key:"chinese", title:"语文", icon:"📝", cls:"subject-chinese" },
+    { key:"math", title:"数学", icon:"🔢", cls:"subject-math" },
+    { key:"english", title:"英语", icon:"🇬🇧", cls:"subject-english" },
+    { key:"daily", title:"每日打卡", icon:"✅", cls:"subject-daily" },
+    { key:"note", title:"备注/提醒", icon:"💡", cls:"subject-note" },
+  ];
+
+  let html = "";
+  sections.forEach(sec => {
+    const items = data.tasks.filter(t => t.s === sec.key);
+    if (items.length === 0) return;
+    html += `<div class="task-section">`;
+    html += `<div class="task-section-title">${sec.icon} ${sec.title}</div>`;
+    html += `<ul class="task-list">`;
+    items.forEach((item, idx) => {
+      const taskId = `task-${key}-${sec.key}-${idx}`;
+      html += `<li class="${sec.cls}" id="${taskId}">`;
+      html += `<span class="task-icon">${item.icon}</span>`;
+      html += `<span class="task-text">${item.text}</span>`;
+      html += `<span class="check-toggle" onclick="toggleCheck('${taskId}', '${key}')">✓</span>`;
+      html += `</li>`;
+    });
+    html += `</ul></div>`;
+  });
+
+  contentEl.innerHTML = html;
+  panel.classList.add("active");
+
+  // 恢复勾选状态
+  updateProgress(key);
+  panel.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+// ========== 勾选 & 进度 ==========
+function toggleCheck(taskId, dayKey) {
+  const li = document.getElementById(taskId);
+  const check = li.querySelector(".check-toggle");
+  check.classList.toggle("checked");
+  li.classList.toggle("completed");
+
+  // 保存状态
+  const states = JSON.parse(localStorage.getItem("taskStates") || "{}");
+  if (!states[dayKey]) states[dayKey] = {};
+  states[dayKey][taskId] = check.classList.contains("checked");
+  localStorage.setItem("taskStates", JSON.stringify(states));
+
+  updateProgress(dayKey);
+}
+
+function updateProgress(dayKey) {
+  const states = JSON.parse(localStorage.getItem("taskStates") || "{}");
+  const dayStates = states[dayKey] || {};
+  const data = dayData[dayKey];
+  if (!data) return;
+
+  // 恢复勾选
+  data.tasks.forEach((item, idx) => {
+    const sec = item.s;
+    const taskId = `task-${dayKey}-${sec}-${idx}`;
+    const li = document.getElementById(taskId);
+    if (!li) return;
+    const check = li.querySelector(".check-toggle");
+    if (dayStates[taskId]) {
+      check.classList.add("checked");
+      li.classList.add("completed");
+    }
+  });
+
+  // 进度
+  const total = data.tasks.length;
+  const done = Object.values(dayStates).filter(v => v).length;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById("progressFill").style.width = pct + "%";
+}
+
+// 初始化
+buildCalendar();
+
+// 如果今天在计划范围内，自动展开今天
+if (dayData[todayKey]) {
+  showDetail(todayKey);
+}
+</script>
+</body>
+</html>
