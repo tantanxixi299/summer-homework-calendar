@@ -49,6 +49,10 @@
 
   .day-num { font-size: 1.2em; font-weight: 700; color: #333; }
   .day-type { font-size: 0.6em; color: #999; margin-top: 2px; }
+  .day-thumb { display: none; font-size: 1.4em; position: absolute; top: 2px; right: 4px; }
+  .day-cell.all-done { background: #c8e6c9 !important; }
+  .day-cell.all-done .day-thumb { display: block; animation: pop 0.3s; }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
   /* 日期类型颜色 */
   .type-normal { background: #e8f5e9; }
@@ -489,9 +493,10 @@ function buildCalendar() {
       const data = dayData[key];
       const isToday = (m.month === todayMonth && d === todayDate);
       if (data) {
-        html += `<div class="day-cell ${typeClassMap[data.type]} ${isToday ? 'today' : ''}" onclick="showDetail('${key}')" style="cursor:pointer">`;
+        html += `<div class="day-cell ${typeClassMap[data.type]} ${isToday ? 'today' : ''}" id="cell-${key}" onclick="showDetail('${key}')" style="cursor:pointer">`;
         html += `<div class="day-num">${d}</div>`;
         html += `<div class="day-type">${typeShortMap[data.type]}</div>`;
+        html += `<div class="day-thumb" id="thumb-${key}">👍</div>`;
         html += `</div>`;
       } else {
         html += `<div class="day-cell ${isToday ? 'today' : ''}"><div class="day-num" style="color:#ccc">${d}</div></div>`;
@@ -601,10 +606,32 @@ function updateProgress(dayKey) {
   const done = Object.values(dayStates).filter(v => v).length;
   const pct = Math.round((done / total) * 100);
   document.getElementById("progressFill").style.width = pct + "%";
+
+  // 全部完成时在日历格子上显示大拇指
+  const cell = document.getElementById("cell-" + dayKey);
+  if (cell) {
+    if (done === total) {
+      cell.classList.add("all-done");
+    } else {
+      cell.classList.remove("all-done");
+    }
+  }
 }
 
 // 初始化
 buildCalendar();
+
+// 页面加载时恢复所有日期的大拇指状态
+Object.keys(dayData).forEach(key => {
+  const states = JSON.parse(localStorage.getItem("taskStates") || "{}");
+  const dayStates = states[key] || {};
+  const total = dayData[key].tasks.length;
+  const done = Object.values(dayStates).filter(v => v).length;
+  if (done === total && total > 0) {
+    const cell = document.getElementById("cell-" + key);
+    if (cell) cell.classList.add("all-done");
+  }
+});
 
 // 如果今天在计划范围内，自动展开今天
 if (dayData[todayKey]) {
